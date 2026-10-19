@@ -3,6 +3,7 @@ import { classesFor } from '../game/classes';
 import { COLORS, GAME_WIDTH } from '../game/config';
 import type { DpsRange, Role } from '../game/player';
 import { createButton, createTitle } from '../ui/button';
+import { addText, navigate, setupLogicalCamera } from '../ui/render';
 
 interface ClassSelectData {
   role: Role;
@@ -23,11 +24,12 @@ export class ClassSelectScene extends Phaser.Scene {
   }
 
   create(): void {
+    setupLogicalCamera(this);
     createTitle(this, 'Choose your class', 60);
 
     const classes = classesFor(this.role, this.range);
-    const columns = 4;
-    const cell = 120;
+    const columns = 5;
+    const cell = 140;
     const startX = GAME_WIDTH / 2 - ((Math.min(columns, classes.length) - 1) * cell) / 2;
 
     classes.forEach((info, i) => {
@@ -39,11 +41,11 @@ export class ClassSelectScene extends Phaser.Scene {
       icon.on('pointerover', () => icon.setStrokeStyle(3, 0xffffff));
       icon.on('pointerout', () => icon.setStrokeStyle(3, 0x000000));
       icon.on('pointerup', () =>
-        this.scene.start('BossSelectScene', {
+        navigate(this, 'BossSelectScene', {
           choice: { role: this.role, range: this.range, classId: info.id },
         }),
       );
-      this.add.text(x, y + 56, info.name, { fontSize: '14px', color: COLORS.text }).setOrigin(0.5);
+      addText(this, x, y + 56, info.name, { fontSize: '14px', color: COLORS.text }).setOrigin(0.5);
     });
 
     createButton(
@@ -51,7 +53,7 @@ export class ClassSelectScene extends Phaser.Scene {
       GAME_WIDTH / 2,
       480,
       'Back',
-      () => this.scene.start(this.role === 'dps' ? 'RangeSelectScene' : 'RoleSelectScene'),
+      () => navigate(this, this.role === 'dps' ? 'RangeSelectScene' : 'RoleSelectScene'),
       { width: 160 },
     );
   }

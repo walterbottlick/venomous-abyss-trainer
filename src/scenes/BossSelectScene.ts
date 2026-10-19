@@ -3,6 +3,7 @@ import { BOSSES } from '../bosses/registry';
 import type { BossSceneData } from '../bosses/types';
 import { GAME_WIDTH } from '../game/config';
 import { createButton, createTitle } from '../ui/button';
+import { navigate, setupLogicalCamera } from '../ui/render';
 
 export class BossSelectScene extends Phaser.Scene {
   private sceneData!: BossSceneData;
@@ -16,12 +17,13 @@ export class BossSelectScene extends Phaser.Scene {
   }
 
   create(): void {
+    setupLogicalCamera(this);
     createTitle(this, 'Choose a boss', 40);
 
     BOSSES.forEach((boss, i) => {
       const column = i < 5 ? 0 : 1;
       const row = i < 5 ? i : i - 5;
-      const x = GAME_WIDTH / 2 + (column === 0 ? -170 : 170);
+      const x = GAME_WIDTH / 2 + (column === 0 ? -200 : 200);
       const y = 120 + row * 60;
       const { sceneKey } = boss;
       createButton(
@@ -30,9 +32,9 @@ export class BossSelectScene extends Phaser.Scene {
         y,
         sceneKey ? boss.name : `${boss.name} (soon)`,
         () => {
-          if (sceneKey) this.scene.start(sceneKey, this.sceneData);
+          if (sceneKey) navigate(this, sceneKey, this.sceneData);
         },
-        { width: 320, enabled: sceneKey !== undefined },
+        { width: 380, enabled: sceneKey !== undefined },
       );
     });
 
@@ -41,7 +43,7 @@ export class BossSelectScene extends Phaser.Scene {
       GAME_WIDTH / 2,
       480,
       'Change class',
-      () => this.scene.start('RoleSelectScene'),
+      () => navigate(this, 'RoleSelectScene'),
       { width: 200 },
     );
   }
