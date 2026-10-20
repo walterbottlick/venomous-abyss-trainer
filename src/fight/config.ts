@@ -127,3 +127,49 @@ export const LOG_FONT_SIZE = 13;
 
 /** Extra pixels around an icon that still count as clicking it, so small icons are easier to hit. */
 export const CLICK_PADDING = 4;
+
+// --- DPS attacks --------------------------------------------------------------------------------
+
+/** Damage dealt to the boss by one DPS attack. */
+export const DPS_DAMAGE_PER_ATTACK = 1;
+/** How long a DPS, player or NPC, waits between attacks while in range. */
+export const DPS_COOLDOWN_SECONDS = 1;
+
+/** Melee attack: a white arc swiped from the attacker toward the boss. */
+export const MELEE_SWIPE_COLOR = 0xffffff;
+export const MELEE_SWIPE_SECONDS = 0.2;
+/** How wide the swipe sweeps, in degrees, and how thick the line is. */
+export const MELEE_SWIPE_ARC_DEGREES = 100;
+export const MELEE_SWIPE_WIDTH = 3;
+/** How far beyond the attacker's icon edge the swipe is drawn. */
+export const MELEE_SWIPE_OFFSET = 5;
+
+/** Ranged attack: a white dot that leaves the attacker and homes in on the boss (it can't miss). */
+export const RANGED_DOT_COLOR = 0xffffff;
+export const RANGED_DOT_RADIUS = 2.5;
+/** How fast ranged projectiles (dot, star and arrow) travel, in pixels per second. */
+export const RANGED_DOT_SPEED = 360;
+
+/** Melee stab: two quick thrusts, a short line shooting out toward the boss and back, twice. */
+export const STAB_SECONDS = 0.3;
+export const STAB_WIDTH = 2;
+/** How long each thrust gets, in pixels, and how far from the attacker's icon edge it starts. */
+export const STAB_LENGTH = 14;
+export const STAB_OFFSET = 3;
+/** The two thrusts are angled this many degrees either side of straight at the boss. */
+export const STAB_SPREAD_DEGREES = 8;
+
+/** Ranged star: a small spinning star. */
+export const STAR_OUTER_RADIUS = 5;
+export const STAR_INNER_RADIUS = 2.2;
+export const STAR_POINTS = 5;
+/** Spin speed in degrees per second. */
+export const STAR_SPIN_SPEED = 540;
+
+/** Ranged arrow: a ">" turned to point the way it flies. */
+export const ARROW_SIZE = 5;
+export const ARROW_WIDTH = 2;
+
+/** Ranged beam: a line from the attacker to the boss that fades in, then out. */
+export const BEAM_SECONDS = 0.5;
+export const BEAM_WIDTH = 2;
