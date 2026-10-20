@@ -32,3 +32,12 @@ export function step(pos: Vec2, dir: Vec2, speed: number, dtSeconds: number, bou
     y: Math.min(bounds.maxY, Math.max(bounds.minY, pos.y + dir.y * speed * dtSeconds)),
   };
 }
+
+/** Move `pos` straight toward `target` by at most `maxDistance`, stopping on it if it is closer. */
+export function moveToward(pos: Vec2, target: Vec2, maxDistance: number): Vec2 {
+  const dx = target.x - pos.x;
+  const dy = target.y - pos.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance <= maxDistance) return { x: target.x, y: target.y };
+  return { x: pos.x + (dx / distance) * maxDistance, y: pos.y + (dy / distance) * maxDistance };
+}
