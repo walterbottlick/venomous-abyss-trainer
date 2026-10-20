@@ -10,11 +10,10 @@ import {
   PLAYER_SIZE,
 } from '../../game/config';
 import { directionFromInput, step, type Vec2 } from '../../game/movement';
+import { FightRuntime } from '../../fight/FightRuntime';
 import { NPC_SIZE_RATIO } from '../../raid/config';
-import { RaidGroup } from '../../raid/RaidGroup';
 import { createButton } from '../../ui/button';
 import { showLoadingBar } from '../../ui/loading';
-import { createPlayerToken } from '../../ui/playerToken';
 import { addText, navigate, setupLogicalCamera } from '../../ui/render';
 import type { BossSceneData } from '../types';
 import { loadVashnikAssets, VASHNIK_ASSETS } from './assets';
@@ -26,6 +25,13 @@ const NPC_SIZE = PLAYER_SIZE * NPC_SIZE_RATIO;
 // Stand-in until the encounter decides where the boss goes (and later moves it).
 const BOSS_START: Vec2 = { x: ARENA_WIDTH / 2, y: 110 };
 const PANEL_PADDING = 20;
+/** The fight log sits in the side panel, between the instructions and the back button. */
+const LOG_AREA = {
+  x: PANEL_X + PANEL_PADDING,
+  y: 215,
+  width: PANEL_WIDTH - PANEL_PADDING * 2,
+  height: 240,
+};
 
 type Key = Phaser.Input.Keyboard.Key;
 type MoveKeys = Record<'w' | 'a' | 's' | 'd' | 'up' | 'down' | 'left' | 'right', Key>;
@@ -34,11 +40,10 @@ const startPosition = (): Vec2 => ({ x: ARENA_WIDTH / 2, y: ARENA_HEIGHT * 0.75 
 
 export class VashnikScene extends Phaser.Scene {
   private sceneData!: BossSceneData;
-  private player!: Phaser.GameObjects.Container;
   private pos: Vec2 = startPosition();
   private keys!: MoveKeys;
   private bossPos: Vec2 = { ...BOSS_START };
-  private raid!: RaidGroup;
+  private runtime!: FightRuntime;
 
   constructor() {
     super('VashnikScene');
@@ -65,23 +70,21 @@ export class VashnikScene extends Phaser.Scene {
     this.add.rectangle(PANEL_X, 0, PANEL_WIDTH, ARENA_HEIGHT, COLORS.panel).setOrigin(0);
 
     this.bossPos = { ...BOSS_START };
-    this.add
-      .image(this.bossPos.x, this.bossPos.y, VASHNIK_ASSETS.boss)
-      .setDisplaySize(BOSS_SIZE, BOSS_SIZE);
-
     const { choice } = this.sceneData;
     const info = CLASSES[choice.classId];
 
-    // Added before the player so the player's icon is always drawn on top.
-    this.raid = new RaidGroup(this, {
+    // Health, healing, death, the log and the wipe screen are shared by every boss fight.
+    this.runtime = new FightRuntime(this, {
       choice,
-      boss: this.bossPos,
-      bossRadius: BOSS_SIZE / 2,
-      npcSize: NPC_SIZE,
       arena: { width: ARENA_WIDTH, height: ARENA_HEIGHT },
+      boss: { pos: this.bossPos, size: BOSS_SIZE, textureKey: VASHNIK_ASSETS.boss },
+      playerStart: this.pos,
+      playerSize: PLAYER_SIZE,
+      npcSize: NPC_SIZE,
+      logArea: LOG_AREA,
+      onRetry: () => navigate(this, 'VashnikScene', this.sceneData),
+      onExit: () => navigate(this, 'BossSelectScene', this.sceneData),
     });
-
-    this.player = createPlayerToken(this, this.pos.x, this.pos.y, choice.classId, PLAYER_SIZE);
 
     this.buildPanel(info.name);
 
@@ -100,21 +103,27 @@ export class VashnikScene extends Phaser.Scene {
   }
 
   update(_time: number, deltaMs: number): void {
-    const k = this.keys;
-    const dir = directionFromInput({
-      left: k.left.isDown || k.a.isDown,
-      right: k.right.isDown || k.d.isDown,
-      up: k.up.isDown || k.w.isDown,
-      down: k.down.isDown || k.s.isDown,
-    });
-    this.pos = step(this.pos, dir, PLAYER_SPEED, deltaMs / 1000, {
-      minX: PLAYER_RADIUS,
-      minY: PLAYER_RADIUS,
-      maxX: ARENA_WIDTH - PLAYER_RADIUS,
-      maxY: ARENA_HEIGHT - PLAYER_RADIUS,
-    });
-    this.player.setPosition(this.pos.x, this.pos.y);
-    this.raid.update(deltaMs / 1000, this.bossPos);
+    const dt = deltaMs / 1000;
+
+    // A dead player, or a finished fight, stops moving.
+    if (this.runtime.playerCanAct) {
+      const k = this.keys;
+      const dir = directionFromInput({
+        left: k.left.isDown || k.a.isDown,
+        right: k.right.isDown || k.d.isDown,
+        up: k.up.isDown || k.w.isDown,
+        down: k.down.isDown || k.s.isDown,
+      });
+      this.pos = step(this.pos, dir, PLAYER_SPEED, dt, {
+        minX: PLAYER_RADIUS,
+        minY: PLAYER_RADIUS,
+        maxX: ARENA_WIDTH - PLAYER_RADIUS,
+        maxY: ARENA_HEIGHT - PLAYER_RADIUS,
+      });
+      this.runtime.setPlayerPosition(this.pos.x, this.pos.y);
+    }
+
+    this.runtime.update(dt, this.bossPos);
   }
 
   private buildPanel(className: string): void {

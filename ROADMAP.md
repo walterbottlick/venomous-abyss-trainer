@@ -8,6 +8,7 @@
 - [x] 690x540 arena + side panel layout, WASD and arrow key movement
 - [x] Game art uploaded; menus use class, role, and encounter icons; Vashnik shows its background and boss portrait
 - [x] NPC raid members (2 tanks, 2 healers, 3 melee, 3 ranged, minus the player): placed around the boss, idle wandering, ready to follow the boss
+- [x] Health rings, healing (click) and dispelling (right-click), NPC death, fight log, wipe screen, boss health and enrage, and Shift+Alt+0-9 testing shortcuts
 
 ## Next: Vashnik the Malignant (about 6 mechanics, TBD)
 

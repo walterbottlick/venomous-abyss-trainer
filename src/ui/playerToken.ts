@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
-import { classIconKey } from '../assets/manifest';
+import { classIconKey, markerKey } from '../assets/manifest';
 import { CLASSES } from '../game/classes';
 import type { ClassId } from '../game/player';
+import { TokenView } from './tokenView';
 
 const TEXTURE_SIZE = 128;
-const BORDER_WIDTH = 3;
 
 /**
  * Radius of the visible icon art, as a fraction of the token's radius. Just inside the coloured
@@ -61,8 +61,8 @@ function ensureCircularIcon(scene: Phaser.Scene, id: ClassId): string {
 
 /**
  * The player's on-screen marker: their class icon on a black disc, ringed in the class colour.
- * `size` is the outer diameter. Move it by setting the container's position. The ring is its own
- * object drawn on top, so the fade never dims it.
+ * `size` is the outer diameter. The ring is drawn on top of the icon, so the fade never dims it,
+ * and (see PLAYER_RING_SHOWS_HEALTH) it doubles as the player's health bar.
  */
 export function createPlayerToken(
   scene: Phaser.Scene,
@@ -70,11 +70,14 @@ export function createPlayerToken(
   y: number,
   classId: ClassId,
   size: number,
-): Phaser.GameObjects.Container {
-  const image = scene.add
-    .image(0, 0, ensureCircularIcon(scene, classId))
-    .setDisplaySize(size, size);
-  const ring = scene.add.circle(0, 0, size / 2 - BORDER_WIDTH / 2);
-  ring.setStrokeStyle(BORDER_WIDTH, CLASSES[classId].color);
-  return scene.add.container(x, y, [image, ring]);
+): TokenView {
+  return new TokenView(scene, {
+    x,
+    y,
+    size,
+    ringColor: CLASSES[classId].color,
+    art: { key: ensureCircularIcon(scene, classId), size },
+    crossKey: markerKey('cross'),
+    removeAfterDeath: false,
+  });
 }

@@ -12,6 +12,8 @@ export interface LayoutInput {
 }
 
 export interface Slot {
+  /** Position of this NPC in `LayoutInput.roles`, so callers can match slots to NPCs. */
+  index: number;
   role: RaidRole;
   /** The spot this NPC stands at, before any idle wandering. */
   home: Vec2;
@@ -38,7 +40,7 @@ export function computeSlots(input: LayoutInput): Slot[] {
   const slots: Slot[] = [];
 
   for (const members of groupRoles(input.roles)) {
-    const layout = ROLE_LAYOUT[members[0]!];
+    const layout = ROLE_LAYOUT[members[0]!.role];
     const distance = bossRadius + npcRadius + layout.gap;
     const centerAngle = layout.oppositeTo
       ? ROLE_LAYOUT[layout.oppositeTo].centerAngle + 180
@@ -51,9 +53,9 @@ export function computeSlots(input: LayoutInput): Slot[] {
         ? ((total - 1) * layout.spacing * 180) / (Math.PI * distance)
         : (layout.arc ?? 0);
 
-    members.forEach((role, index) => {
-      const angle = total === 1 ? centerAngle : centerAngle + arc * (index / (total - 1) - 0.5);
-      slots.push({ role, home: polar(boss, distance, angle) });
+    members.forEach(({ role, index: npcIndex }, position) => {
+      const angle = total === 1 ? centerAngle : centerAngle + arc * (position / (total - 1) - 0.5);
+      slots.push({ index: npcIndex, role, home: polar(boss, distance, angle) });
     });
   }
 
@@ -61,29 +63,33 @@ export function computeSlots(input: LayoutInput): Slot[] {
   return slots;
 }
 
+/** One NPC waiting to be placed: its role, and its position in the list of NPCs. */
+interface Member {
+  role: RaidRole;
+  index: number;
+}
+
 /**
  * Splits the NPCs into groups that stand together, each listed left to right. Roles that share
  * a `cluster` are merged into one group, mixed so the roles alternate (ranged, healer, ranged...)
  * rather than one role bunching at each end.
  */
-function groupRoles(roles: readonly RaidRole[]): RaidRole[][] {
-  const byGroup = new Map<string, Map<RaidRole, number>>();
-  for (const role of roles) {
+function groupRoles(roles: readonly RaidRole[]): Member[][] {
+  const byGroup = new Map<string, Map<RaidRole, Member[]>>();
+  roles.forEach((role, index) => {
     const key = ROLE_LAYOUT[role].cluster ?? role;
-    const counts = byGroup.get(key) ?? new Map<RaidRole, number>();
-    counts.set(role, (counts.get(role) ?? 0) + 1);
-    byGroup.set(key, counts);
-  }
+    const byRole = byGroup.get(key) ?? new Map<RaidRole, Member[]>();
+    byRole.set(role, [...(byRole.get(role) ?? []), { role, index }]);
+    byGroup.set(key, byRole);
+  });
 
-  return [...byGroup.values()].map((counts) => {
+  return [...byGroup.values()].map((byRole) => {
     // Most numerous role first, so it takes the outside positions in the mix.
-    const queues = [...counts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .map(([role, count]) => Array<RaidRole>(count).fill(role));
-    const mixed: RaidRole[] = [];
+    const queues = [...byRole.values()].sort((a, b) => b.length - a.length);
+    const mixed: Member[] = [];
     while (queues.some((q) => q.length > 0)) {
       for (const queue of queues) {
-        const next = queue.pop();
+        const next = queue.shift();
         if (next) mixed.push(next);
       }
     }
