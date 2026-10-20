@@ -39,7 +39,7 @@ src/
     registry.ts    Ordered list of all bosses (unbuilt ones show as "soon")
     types.ts       Boss definition and scene data types
     <boss>/        One self-contained folder per boss fight
-public/assets/     PNG/JPG art
+public/assets/     PNG/JPG art; see public/assets/README.md for layout and naming
 ```
 
 Encounter logic (timings, rules, win/fail) is kept as plain TypeScript separate from rendering, so it can be unit-tested without launching the game.
