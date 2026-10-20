@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { COLORS } from '../game/config';
+import { COLORS, GAME_WIDTH } from '../game/config';
+import { addText } from './render';
 
 export interface ButtonOptions {
   width?: number;
@@ -19,9 +20,10 @@ export function createButton(
 ): Phaser.GameObjects.Container {
   const bg = scene.add.rectangle(0, 0, width, height, enabled ? fill : 0x1a1f24);
   bg.setStrokeStyle(2, enabled ? COLORS.arenaBorder : 0x2a3138);
-  const text = scene.add
-    .text(0, 0, label, { fontSize: '20px', color: enabled ? COLORS.text : COLORS.muted })
-    .setOrigin(0.5);
+  const text = addText(scene, 0, 0, label, {
+    fontSize: '20px',
+    color: enabled ? COLORS.text : COLORS.muted,
+  }).setOrigin(0.5);
   const container = scene.add.container(x, y, [bg, text]);
 
   if (enabled) {
@@ -34,7 +36,5 @@ export function createButton(
 }
 
 export function createTitle(scene: Phaser.Scene, text: string, y = 60): void {
-  scene.add
-    .text(scene.scale.width / 2, y, text, { fontSize: '32px', color: COLORS.text })
-    .setOrigin(0.5);
+  addText(scene, GAME_WIDTH / 2, y, text, { fontSize: '32px', color: COLORS.text }).setOrigin(0.5);
 }

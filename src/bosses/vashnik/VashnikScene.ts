@@ -3,13 +3,14 @@ import { CLASSES } from '../../game/classes';
 import { ARENA_SIZE, COLORS, PANEL_WIDTH, PANEL_X } from '../../game/config';
 import { directionFromInput, step, type Vec2 } from '../../game/movement';
 import { createButton } from '../../ui/button';
+import { addText, navigate, setupLogicalCamera } from '../../ui/render';
 import type { BossSceneData } from '../types';
 
 const PLAYER_RADIUS = 14;
 const PLAYER_SPEED = 220; // px per second
 
 type Key = Phaser.Input.Keyboard.Key;
-type MoveKeys = Phaser.Types.Input.Keyboard.CursorKeys & Record<'w' | 'a' | 's' | 'd', Key>;
+type MoveKeys = Record<'w' | 'a' | 's' | 'd' | 'up' | 'down' | 'left' | 'right', Key>;
 
 export class VashnikScene extends Phaser.Scene {
   private sceneData!: BossSceneData;
@@ -27,6 +28,7 @@ export class VashnikScene extends Phaser.Scene {
   }
 
   create(): void {
+    setupLogicalCamera(this);
     this.add
       .rectangle(0, 0, ARENA_SIZE, ARENA_SIZE, COLORS.arena)
       .setOrigin(0)
@@ -37,24 +39,31 @@ export class VashnikScene extends Phaser.Scene {
     this.player = this.add.circle(this.pos.x, this.pos.y, PLAYER_RADIUS, info.color);
 
     const textX = PANEL_X + 24;
-    this.add.text(textX, 24, 'Vashnik the Malignant', { fontSize: '24px', color: COLORS.text });
-    this.add.text(textX, 64, `${info.name} (${this.describeRole()})`, {
+    addText(this, textX, 24, 'Vashnik the Malignant', { fontSize: '24px', color: COLORS.text });
+    addText(this, textX, 64, `${info.name} (${this.describeRole()})`, {
       fontSize: '16px',
       color: COLORS.muted,
     });
-    this.add.text(textX, 110, 'Move with WASD or the arrow keys.\nMechanics coming soon.', {
+    addText(this, textX, 110, 'Move with WASD or the arrow keys.\nMechanics coming soon.', {
       fontSize: '16px',
       color: COLORS.text,
     });
     createButton(this, PANEL_X + PANEL_WIDTH / 2, 490, 'Back to bosses', () =>
-      this.scene.start('BossSelectScene', this.sceneData),
+      navigate(this, 'BossSelectScene', this.sceneData),
     );
 
     const keyboard = this.input.keyboard!;
-    this.keys = {
-      ...keyboard.createCursorKeys(),
-      ...(keyboard.addKeys('W,A,S,D') as Record<'w' | 'a' | 's' | 'd', Key>),
-    };
+    // Both WASD and arrow keys always work. Keys are named by the object keys given here.
+    this.keys = keyboard.addKeys({
+      w: 'W',
+      a: 'A',
+      s: 'S',
+      d: 'D',
+      up: 'UP',
+      down: 'DOWN',
+      left: 'LEFT',
+      right: 'RIGHT',
+    }) as MoveKeys;
   }
 
   update(_time: number, deltaMs: number): void {

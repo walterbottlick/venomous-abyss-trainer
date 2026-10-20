@@ -17,3 +17,9 @@ export const COLORS = {
   text: '#e8f0e8',
   muted: '#8aa08a',
 } as const;
+
+/**
+ * The canvas is rendered at this multiple of the logical 960x540 size, then scaled to fit the
+ * window by the browser. Without it everything looks blurry on high-DPI displays.
+ */
+export const RENDER_SCALE = 2;
