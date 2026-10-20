@@ -2,10 +2,14 @@
 export const GAME_WIDTH = 960;
 export const GAME_HEIGHT = 540;
 
-/** The square the player moves around in, on the left; the rest is the side panel. */
-export const ARENA_SIZE = 540;
-export const PANEL_X = ARENA_SIZE;
-export const PANEL_WIDTH = GAME_WIDTH - ARENA_SIZE;
+/**
+ * The play area on the left. It matches the shape of the arena backgrounds (1114x870, about
+ * 1.28:1) so they show in full, uncropped. The rest of the width is the side panel.
+ */
+export const ARENA_WIDTH = 690;
+export const ARENA_HEIGHT = 540;
+export const PANEL_X = ARENA_WIDTH;
+export const PANEL_WIDTH = GAME_WIDTH - ARENA_WIDTH;
 
 export const COLORS = {
   background: 0x0b0f14,

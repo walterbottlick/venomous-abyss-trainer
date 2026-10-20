@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { encounterIconKey } from '../assets/manifest';
 import { BOSSES } from '../bosses/registry';
 import type { BossSceneData } from '../bosses/types';
 import { GAME_WIDTH } from '../game/config';
@@ -30,11 +31,11 @@ export class BossSelectScene extends Phaser.Scene {
         this,
         x,
         y,
-        sceneKey ? boss.name : `${boss.name} (soon)`,
+        boss.name,
         () => {
           if (sceneKey) navigate(this, sceneKey, this.sceneData);
         },
-        { width: 380, enabled: sceneKey !== undefined },
+        { width: 380, enabled: sceneKey !== undefined, icon: encounterIconKey(boss.id) },
       );
     });
 

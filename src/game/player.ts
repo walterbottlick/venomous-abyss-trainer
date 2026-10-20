@@ -19,8 +19,6 @@ export type ClassId =
 export interface ClassInfo {
   id: ClassId;
   name: string;
-  /** Placeholder colour until real class icons are supplied (the standard WoW class colours). */
-  color: number;
 }
 
 export interface PlayerChoice {

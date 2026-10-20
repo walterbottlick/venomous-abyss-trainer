@@ -1,9 +1,13 @@
 import Phaser from 'phaser';
+import { classIconKey } from '../assets/manifest';
 import { classesFor } from '../game/classes';
 import { COLORS, GAME_WIDTH } from '../game/config';
 import type { DpsRange, Role } from '../game/player';
 import { createButton, createTitle } from '../ui/button';
 import { addText, navigate, setupLogicalCamera } from '../ui/render';
+
+/** On-screen size of a class icon. The source art is 100x100. */
+const ICON_SIZE = 64;
 
 interface ClassSelectData {
   role: Role;
@@ -35,17 +39,21 @@ export class ClassSelectScene extends Phaser.Scene {
     classes.forEach((info, i) => {
       const x = startX + (i % columns) * cell;
       const y = 170 + Math.floor(i / columns) * 130;
-      // Placeholder icon: swap for the supplied PNG once class icons are added.
-      const icon = this.add.circle(x, y, 36, info.color).setStrokeStyle(3, 0x000000);
+      const frame = this.add.rectangle(x, y, ICON_SIZE + 8, ICON_SIZE + 8, 0x000000);
+      frame.setStrokeStyle(3, COLORS.arenaBorder);
+      const icon = this.add.image(x, y, classIconKey(info.id)).setDisplaySize(ICON_SIZE, ICON_SIZE);
       icon.setInteractive({ useHandCursor: true });
-      icon.on('pointerover', () => icon.setStrokeStyle(3, 0xffffff));
-      icon.on('pointerout', () => icon.setStrokeStyle(3, 0x000000));
+      icon.on('pointerover', () => frame.setStrokeStyle(3, 0xffffff));
+      icon.on('pointerout', () => frame.setStrokeStyle(3, COLORS.arenaBorder));
       icon.on('pointerup', () =>
         navigate(this, 'BossSelectScene', {
           choice: { role: this.role, range: this.range, classId: info.id },
         }),
       );
-      addText(this, x, y + 56, info.name, { fontSize: '14px', color: COLORS.text }).setOrigin(0.5);
+      addText(this, x, y + ICON_SIZE / 2 + 18, info.name, {
+        fontSize: '14px',
+        color: COLORS.text,
+      }).setOrigin(0.5);
     });
 
     createButton(
