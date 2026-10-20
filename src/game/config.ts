@@ -27,3 +27,6 @@ export const COLORS = {
  * window by the browser. Without it everything looks blurry on high-DPI displays.
  */
 export const RENDER_SCALE = 2;
+
+/** Diameter of the player's icon in a fight. Boss and NPC sizes are defined relative to it. */
+export const PLAYER_SIZE = 32;

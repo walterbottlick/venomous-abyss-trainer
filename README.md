@@ -36,6 +36,7 @@ src/
   scenes/          Menu scenes: role, melee/ranged, class, boss select
   assets/          Asset keys and paths, and the loader for shared menu art
   ui/              Shared UI helpers (buttons, loading bar, camera setup)
+  raid/            NPC raid members: composition, layout, idle wander; all tunables in raid/config.ts
   bosses/
     registry.ts    Ordered list of all bosses (unbuilt ones show as "soon")
     types.ts       Boss definition and scene data types

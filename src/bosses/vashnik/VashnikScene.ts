@@ -1,8 +1,17 @@
 import Phaser from 'phaser';
 import { roleIconFor, roleIconKey } from '../../assets/manifest';
 import { CLASSES } from '../../game/classes';
-import { ARENA_HEIGHT, ARENA_WIDTH, COLORS, PANEL_WIDTH, PANEL_X } from '../../game/config';
+import {
+  ARENA_HEIGHT,
+  ARENA_WIDTH,
+  COLORS,
+  PANEL_WIDTH,
+  PANEL_X,
+  PLAYER_SIZE,
+} from '../../game/config';
 import { directionFromInput, step, type Vec2 } from '../../game/movement';
+import { NPC_SIZE_RATIO } from '../../raid/config';
+import { RaidGroup } from '../../raid/RaidGroup';
 import { createButton } from '../../ui/button';
 import { showLoadingBar } from '../../ui/loading';
 import { createPlayerToken } from '../../ui/playerToken';
@@ -10,10 +19,12 @@ import { addText, navigate, setupLogicalCamera } from '../../ui/render';
 import type { BossSceneData } from '../types';
 import { loadVashnikAssets, VASHNIK_ASSETS } from './assets';
 
-const PLAYER_SIZE = 32;
 const PLAYER_RADIUS = PLAYER_SIZE / 2;
 const PLAYER_SPEED = 220; // px per second
 const BOSS_SIZE = PLAYER_SIZE * 1.5;
+const NPC_SIZE = PLAYER_SIZE * NPC_SIZE_RATIO;
+// Stand-in until the encounter decides where the boss goes (and later moves it).
+const BOSS_START: Vec2 = { x: ARENA_WIDTH / 2, y: 110 };
 const PANEL_PADDING = 20;
 
 type Key = Phaser.Input.Keyboard.Key;
@@ -26,6 +37,8 @@ export class VashnikScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Container;
   private pos: Vec2 = startPosition();
   private keys!: MoveKeys;
+  private bossPos: Vec2 = { ...BOSS_START };
+  private raid!: RaidGroup;
 
   constructor() {
     super('VashnikScene');
@@ -51,11 +64,23 @@ export class VashnikScene extends Phaser.Scene {
       .setDisplaySize(ARENA_WIDTH, ARENA_HEIGHT);
     this.add.rectangle(PANEL_X, 0, PANEL_WIDTH, ARENA_HEIGHT, COLORS.panel).setOrigin(0);
 
-    // Stand-in position until the encounter decides where the boss goes.
-    this.add.image(ARENA_WIDTH / 2, 110, VASHNIK_ASSETS.boss).setDisplaySize(BOSS_SIZE, BOSS_SIZE);
+    this.bossPos = { ...BOSS_START };
+    this.add
+      .image(this.bossPos.x, this.bossPos.y, VASHNIK_ASSETS.boss)
+      .setDisplaySize(BOSS_SIZE, BOSS_SIZE);
 
     const { choice } = this.sceneData;
     const info = CLASSES[choice.classId];
+
+    // Added before the player so the player's icon is always drawn on top.
+    this.raid = new RaidGroup(this, {
+      choice,
+      boss: this.bossPos,
+      bossRadius: BOSS_SIZE / 2,
+      npcSize: NPC_SIZE,
+      arena: { width: ARENA_WIDTH, height: ARENA_HEIGHT },
+    });
+
     this.player = createPlayerToken(this, this.pos.x, this.pos.y, choice.classId, PLAYER_SIZE);
 
     this.buildPanel(info.name);
@@ -89,6 +114,7 @@ export class VashnikScene extends Phaser.Scene {
       maxY: ARENA_HEIGHT - PLAYER_RADIUS,
     });
     this.player.setPosition(this.pos.x, this.pos.y);
+    this.raid.update(deltaMs / 1000, this.bossPos);
   }
 
   private buildPanel(className: string): void {
