@@ -10,6 +10,7 @@ import {
   PLAYER_SIZE,
 } from '../../game/config';
 import { directionFromInput, step, type Vec2 } from '../../game/movement';
+import { abilityLines } from '../../fight/abilities';
 import { FightRuntime } from '../../fight/FightRuntime';
 import { NPC_SIZE_RATIO } from '../../raid/config';
 import { createButton } from '../../ui/button';
@@ -25,13 +26,9 @@ const NPC_SIZE = PLAYER_SIZE * NPC_SIZE_RATIO;
 // Stand-in until the encounter decides where the boss goes (and later moves it).
 const BOSS_START: Vec2 = { x: ARENA_WIDTH / 2, y: 110 };
 const PANEL_PADDING = 20;
-/** The fight log sits in the side panel, between the instructions and the back button. */
-const LOG_AREA = {
-  x: PANEL_X + PANEL_PADDING,
-  y: 215,
-  width: PANEL_WIDTH - PANEL_PADDING * 2,
-  height: 240,
-};
+/** The fight log fills the side panel from below the instructions to just above the back button. */
+const LOG_BOTTOM = ARENA_HEIGHT - 70;
+const LOG_GAP = 12;
 
 type Key = Phaser.Input.Keyboard.Key;
 type MoveKeys = Record<'w' | 'a' | 's' | 'd' | 'up' | 'down' | 'left' | 'right', Key>;
@@ -73,7 +70,10 @@ export class VashnikScene extends Phaser.Scene {
     const { choice } = this.sceneData;
     const info = CLASSES[choice.classId];
 
-    // Health, healing, death, the log and the wipe screen are shared by every boss fight.
+    // The panel text decides how much room is left for the log, so it is built first.
+    const panelBottom = this.buildPanel(info.name);
+
+    // Health, healing, attacks, death, the log and the end screens are shared by every boss fight.
     this.runtime = new FightRuntime(this, {
       choice,
       arena: { width: ARENA_WIDTH, height: ARENA_HEIGHT },
@@ -81,12 +81,15 @@ export class VashnikScene extends Phaser.Scene {
       playerStart: this.pos,
       playerSize: PLAYER_SIZE,
       npcSize: NPC_SIZE,
-      logArea: LOG_AREA,
+      logArea: {
+        x: PANEL_X + PANEL_PADDING,
+        y: panelBottom + LOG_GAP,
+        width: PANEL_WIDTH - PANEL_PADDING * 2,
+        height: LOG_BOTTOM - (panelBottom + LOG_GAP),
+      },
       onRetry: () => navigate(this, 'VashnikScene', this.sceneData),
       onExit: () => navigate(this, 'BossSelectScene', this.sceneData),
     });
-
-    this.buildPanel(info.name);
 
     const keyboard = this.input.keyboard!;
     // Both WASD and arrow keys always work. Keys are named by the object keys given here.
@@ -126,7 +129,8 @@ export class VashnikScene extends Phaser.Scene {
     this.runtime.update(dt, this.bossPos);
   }
 
-  private buildPanel(className: string): void {
+  /** Builds the side panel. Returns the y just below its text, where the fight log can start. */
+  private buildPanel(className: string): number {
     const x = PANEL_X + PANEL_PADDING;
     const wrap = { wordWrap: { width: PANEL_WIDTH - PANEL_PADDING * 2 } };
 
@@ -144,11 +148,20 @@ export class VashnikScene extends Phaser.Scene {
       color: COLORS.muted,
     }).setOrigin(0, 0.5);
 
-    addText(this, x, 150, 'Move with WASD or the arrow keys.\n\nMechanics coming soon.', {
+    // What the player's role can do, then how to move.
+    const abilities = addText(this, x, 130, abilityLines(this.sceneData.choice).join('\n'), {
       fontSize: '14px',
       color: COLORS.text,
+      lineSpacing: 4,
       ...wrap,
     });
+    const movement = addText(
+      this,
+      x,
+      abilities.y + abilities.height + 12,
+      'Move with WASD or the arrow keys.',
+      { fontSize: '14px', color: COLORS.text, ...wrap },
+    );
 
     createButton(
       this,
@@ -158,6 +171,8 @@ export class VashnikScene extends Phaser.Scene {
       () => navigate(this, 'BossSelectScene', this.sceneData),
       { width: PANEL_WIDTH - PANEL_PADDING * 2 },
     );
+
+    return movement.y + movement.height;
   }
 
   private describeRole(): string {

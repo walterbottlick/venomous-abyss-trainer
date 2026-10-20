@@ -4,13 +4,16 @@ import type { Vec2 } from '../game/movement';
 import type { PlayerChoice } from '../game/player';
 import { npcRoles, playerRaidRole } from '../raid/composition';
 import { RaidGroup } from '../raid/RaidGroup';
+import { AttackEffects } from '../ui/attackEffects';
 import { CombatLog, type LogArea } from '../ui/combatLog';
 import { createPlayerToken } from '../ui/playerToken';
 import { TokenView } from '../ui/tokenView';
 import { showVictoryScreen, showWipeScreen } from '../ui/endScreen';
 import { HEALTH_RING_COLOR, LOW_HEALTH_THRESHOLD, PLAYER_RING_SHOWS_HEALTH } from './config';
+import { attackStyleFor } from './attackStyles';
 import { installDebugShortcuts } from './debugShortcuts';
 import { BOSS_ID, Fight, PLAYER_ID } from './Fight';
+import { isInRange, rangeMetersFor } from './ranges';
 
 export interface FightRuntimeOptions {
   choice: PlayerChoice;
@@ -50,18 +53,34 @@ export class FightRuntime {
   private readonly bossToken: TokenView;
   private readonly raid: RaidGroup;
   private readonly log: CombatLog;
+  private readonly effects: AttackEffects;
   private readonly endActions: { onRetry: () => void; onExit: () => void };
+  private readonly choice: PlayerChoice;
+  /** Icon radii, for working out attack range and where attack animations start and end. */
+  private readonly radii: { player: number; npc: number; boss: number };
+  /** Where the boss currently is. Updated every frame; attack animations home in on it. */
+  private bossPos: Vec2;
 
   constructor(scene: Phaser.Scene, options: FightRuntimeOptions) {
     const { choice, arena, boss } = options;
     this.scene = scene;
     this.arena = arena;
     this.endActions = { onRetry: options.onRetry, onExit: options.onExit };
+    this.choice = choice;
+    this.bossPos = { ...boss.pos };
+    this.radii = {
+      player: options.playerSize / 2,
+      npc: options.npcSize / 2,
+      boss: boss.size / 2,
+    };
 
     this.fight = new Fight({
       playerRole: playerRaidRole(choice),
       npcRoles: npcRoles(choice),
       bossMaxHealth: boss.maxHealth,
+      // Only a DPS player attacks; a healer's range is never used.
+      playerRangeMeters:
+        choice.role === 'dps' ? rangeMetersFor(choice.classId, choice.range ?? 'ranged') : 0,
       random: options.random,
     });
 
@@ -92,6 +111,7 @@ export class FightRuntime {
       options.playerSize,
     );
     this.log = new CombatLog(scene, options.logArea);
+    this.effects = new AttackEffects(scene);
 
     // Left-click heals, right-click dispels. Both only work for a healer player (see Fight).
     this.playerToken.onClick((button) => this.click(PLAYER_ID, button));
@@ -119,11 +139,16 @@ export class FightRuntime {
 
   /** Advance the fight by one frame. `bossPos` is where the boss currently stands. */
   update(dtSeconds: number, bossPos: Vec2): void {
+    this.bossPos = bossPos;
+    this.updateRanges();
     this.fight.update(dtSeconds);
     for (const event of this.fight.drainEvents()) {
       switch (event.type) {
         case 'healed':
           this.tokenFor(event.id)?.flashHeal();
+          break;
+        case 'attacked':
+          this.showAttack(event.id);
           break;
         case 'died':
           // The boss's own defeat is shown by the fight ending, not by darkening it.
@@ -148,6 +173,37 @@ export class FightRuntime {
     this.raid.update(dtSeconds, bossPos);
     this.playerToken.update(dtSeconds);
     this.bossToken.update(dtSeconds);
+    this.effects.update(dtSeconds);
+  }
+
+  /** Tells the fight which DPS are currently close enough to the boss to attack. */
+  private updateRanges(): void {
+    for (const c of this.fight.raiders) {
+      if (c.role !== 'melee' && c.role !== 'ranged') continue;
+      const token = this.tokenFor(c.id);
+      if (!token || !c.alive) continue;
+      const radius = c.kind === 'player' ? this.radii.player : this.radii.npc;
+      this.fight.setInRange(
+        c.id,
+        isInRange(token.position, radius, this.bossPos, this.radii.boss, c.rangeMeters),
+      );
+    }
+  }
+
+  /** Plays the attack animation for a DPS: a swipe for melee, a homing dot for ranged. */
+  private showAttack(id: string): void {
+    const c = this.fight.get(id);
+    const token = this.tokenFor(id);
+    if (!token || !c.role) return;
+    const classId = c.kind === 'player' ? this.choice.classId : undefined;
+    const radius = c.kind === 'player' ? this.radii.player : this.radii.npc;
+    this.effects.spawn(
+      attackStyleFor(c.role, classId),
+      () => token.position,
+      radius,
+      () => this.bossPos,
+      this.radii.boss,
+    );
   }
 
   private click(id: string, button: 'left' | 'right'): void {

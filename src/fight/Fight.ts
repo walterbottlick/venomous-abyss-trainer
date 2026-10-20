@@ -1,6 +1,8 @@
 import { ROLE_LABEL, type RaidRole } from '../raid/types';
 import {
   BOSS_MAX_HEALTH,
+  DPS_COOLDOWN_SECONDS,
+  DPS_DAMAGE_PER_ATTACK,
   ENRAGE_WIPE_DELAY_SECONDS,
   HEAL_AMOUNT,
   HEALER_COOLDOWN_SECONDS,
@@ -8,6 +10,7 @@ import {
   LOW_HEALTH_THRESHOLD,
   NPC_HEAL_PRIORITY,
 } from './config';
+import { NPC_RANGE_METERS } from './ranges';
 import { pickWipeMessage, WIPE_PRIORITY, type WipeReason } from './wipeMessages';
 
 /**
@@ -32,11 +35,16 @@ export interface Combatant {
   alive: boolean;
   /** Hit by a magic effect that a healer can dispel. */
   debuffed: boolean;
+  /** How far a DPS can attack from, in meters. 0 for everyone who does not attack. */
+  rangeMeters: number;
+  /** Whether this DPS is close enough to the boss to attack right now. Set by the scene. */
+  inRange: boolean;
 }
 
 /** One-off things that happened, for the scene to react to (flash an icon, add a log line...). */
 export type FightEvent =
   | { type: 'healed'; id: string }
+  | { type: 'attacked'; id: string }
   | { type: 'died'; id: string }
   | { type: 'log'; text: string }
   | { type: 'enraged' }
@@ -51,8 +59,18 @@ export interface FightOptions {
   /** One entry per NPC, in the order their ids (`npcId(0)`, `npcId(1)`...) are handed out. */
   npcRoles: readonly RaidRole[];
   bossMaxHealth?: number;
+  /** How far the player can attack from, in meters, if they are a DPS. */
+  playerRangeMeters?: number;
   /** Random numbers in [0, 1). Defaults to Math.random; pass a seeded one in tests. */
   random?: () => number;
+}
+
+const isDps = (c: { role: RaidRole | null }): boolean => c.role === 'melee' || c.role === 'ranged';
+
+/** The attack range of an NPC DPS, in meters; 0 for anyone else (the player's is passed in). */
+function npcRange(kind: CombatantKind, role: RaidRole | null): number {
+  if (kind !== 'npc' || (role !== 'melee' && role !== 'ranged')) return 0;
+  return NPC_RANGE_METERS[role];
 }
 
 export class Fight {
@@ -73,7 +91,12 @@ export class Fight {
   constructor(options: FightOptions) {
     this.random = options.random ?? Math.random;
 
-    this.add({ id: PLAYER_ID, kind: 'player', role: options.playerRole });
+    this.add({
+      id: PLAYER_ID,
+      kind: 'player',
+      role: options.playerRole,
+      rangeMeters: options.playerRangeMeters,
+    });
     options.npcRoles.forEach((role, i) => this.add({ id: npcId(i), kind: 'npc', role }));
     this.add({
       id: BOSS_ID,
@@ -82,10 +105,13 @@ export class Fight {
       maxHealth: options.bossMaxHealth ?? BOSS_MAX_HEALTH,
     });
 
-    // Stagger the NPC healers so they don't all cast on the same frame.
+    // Stagger the NPC healers and DPS so they don't all act on the same frame.
     for (const c of this.combatants) {
-      if (c.kind === 'npc' && c.role === 'healer') {
+      if (c.kind !== 'npc') continue;
+      if (c.role === 'healer') {
         this.nextActionAt.set(c.id, this.random() * HEALER_COOLDOWN_SECONDS);
+      } else if (isDps(c)) {
+        this.nextActionAt.set(c.id, this.random() * DPS_COOLDOWN_SECONDS);
       }
     }
   }
@@ -95,6 +121,7 @@ export class Fight {
     kind: CombatantKind;
     role: RaidRole | null;
     maxHealth?: number;
+    rangeMeters?: number;
   }): void {
     const maxHealth = c.maxHealth ?? (c.role ? MAX_HEALTH[c.role] : BOSS_MAX_HEALTH);
     const combatant: Combatant = {
@@ -105,6 +132,8 @@ export class Fight {
       health: maxHealth,
       alive: true,
       debuffed: false,
+      rangeMeters: c.rangeMeters ?? npcRange(c.kind, c.role),
+      inRange: false,
     };
     this.combatants.push(combatant);
     this.byId.set(c.id, combatant);
@@ -184,6 +213,11 @@ export class Fight {
     }
   }
 
+  /** Tells the fight whether a DPS is close enough to the boss to attack right now. */
+  setInRange(id: string, inRange: boolean): void {
+    this.get(id).inRange = inRange;
+  }
+
   // --- Healing and dispelling ------------------------------------------------------------------
 
   /**
@@ -224,8 +258,8 @@ export class Fight {
     return this.time >= (this.nextActionAt.get(healerId) ?? 0);
   }
 
-  private startCooldown(healerId: string): void {
-    this.nextActionAt.set(healerId, this.time + HEALER_COOLDOWN_SECONDS);
+  private startCooldown(id: string, seconds: number = HEALER_COOLDOWN_SECONDS): void {
+    this.nextActionAt.set(id, this.time + seconds);
   }
 
   /** The player (if a healer) heals a raider. */
@@ -271,8 +305,24 @@ export class Fight {
     this.time += dtSeconds;
 
     this.runNpcHealers();
+    this.runDpsAttacks();
     if (this.enraged && this.boss.alive) this.enrageRemaining -= dtSeconds;
     this.resolve();
+  }
+
+  /**
+   * Every living DPS in range of the boss hits it for DPS_DAMAGE_PER_ATTACK, then waits
+   * DPS_COOLDOWN_SECONDS. Tanks and healers never attack. A DPS out of range simply waits, and
+   * attacks the moment it is back in range.
+   */
+  private runDpsAttacks(): void {
+    for (const c of this.raiders) {
+      if (!this.boss.alive) return;
+      if (!isDps(c) || !c.alive || !c.inRange || !this.isReady(c.id)) continue;
+      this.damage(BOSS_ID, DPS_DAMAGE_PER_ATTACK);
+      this.startCooldown(c.id, DPS_COOLDOWN_SECONDS);
+      this.events.push({ type: 'attacked', id: c.id });
+    }
   }
 
   private runNpcHealers(): void {

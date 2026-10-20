@@ -30,3 +30,10 @@ export const RENDER_SCALE = 2;
 
 /** Diameter of the player's icon in a fight. Boss and NPC sizes are defined relative to it. */
 export const PLAYER_SIZE = 32;
+
+/**
+ * The master unit of measurement: how many game pixels make one in-game meter. Every distance
+ * given in meters (attack ranges, for now) is multiplied by this. With 10, the 690x540 arena is
+ * 69m x 54m, the player icon is 3.2m wide, and a 30m range reaches 300 pixels.
+ */
+export const PIXELS_PER_METER = 10;
