@@ -40,11 +40,11 @@ export class ClassSelectScene extends Phaser.Scene {
       const x = startX + (i % columns) * cell;
       const y = 170 + Math.floor(i / columns) * 130;
       const frame = this.add.rectangle(x, y, ICON_SIZE + 8, ICON_SIZE + 8, 0x000000);
-      frame.setStrokeStyle(3, COLORS.arenaBorder);
+      frame.setStrokeStyle(3, info.color);
       const icon = this.add.image(x, y, classIconKey(info.id)).setDisplaySize(ICON_SIZE, ICON_SIZE);
       icon.setInteractive({ useHandCursor: true });
       icon.on('pointerover', () => frame.setStrokeStyle(3, 0xffffff));
-      icon.on('pointerout', () => frame.setStrokeStyle(3, COLORS.arenaBorder));
+      icon.on('pointerout', () => frame.setStrokeStyle(3, info.color));
       icon.on('pointerup', () =>
         navigate(this, 'BossSelectScene', {
           choice: { role: this.role, range: this.range, classId: info.id },

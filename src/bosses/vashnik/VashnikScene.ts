@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
-import { classIconKey, roleIconFor, roleIconKey } from '../../assets/manifest';
+import { roleIconFor, roleIconKey } from '../../assets/manifest';
 import { CLASSES } from '../../game/classes';
 import { ARENA_HEIGHT, ARENA_WIDTH, COLORS, PANEL_WIDTH, PANEL_X } from '../../game/config';
 import { directionFromInput, step, type Vec2 } from '../../game/movement';
 import { createButton } from '../../ui/button';
 import { showLoadingBar } from '../../ui/loading';
+import { createPlayerToken } from '../../ui/playerToken';
 import { addText, navigate, setupLogicalCamera } from '../../ui/render';
 import type { BossSceneData } from '../types';
 import { loadVashnikAssets, VASHNIK_ASSETS } from './assets';
@@ -22,7 +23,7 @@ const startPosition = (): Vec2 => ({ x: ARENA_WIDTH / 2, y: ARENA_HEIGHT * 0.75 
 
 export class VashnikScene extends Phaser.Scene {
   private sceneData!: BossSceneData;
-  private player!: Phaser.GameObjects.Image;
+  private player!: Phaser.GameObjects.Container;
   private pos: Vec2 = startPosition();
   private keys!: MoveKeys;
 
@@ -55,9 +56,7 @@ export class VashnikScene extends Phaser.Scene {
 
     const { choice } = this.sceneData;
     const info = CLASSES[choice.classId];
-    this.player = this.add
-      .image(this.pos.x, this.pos.y, classIconKey(choice.classId))
-      .setDisplaySize(PLAYER_SIZE, PLAYER_SIZE);
+    this.player = createPlayerToken(this, this.pos.x, this.pos.y, choice.classId, PLAYER_SIZE);
 
     this.buildPanel(info.name);
 
