@@ -27,19 +27,20 @@ npm run dev
 
 ## Layout
 
-The game is a fixed 960x540 canvas, scaled to fit the window: a 540x540 square arena on the left and a 420px side panel for menus and HUD on the right.
+The game is a fixed 960x540 canvas, scaled to fit the window: a 690x540 arena on the left (the same shape as the arena art, so backgrounds are never cropped) and a 270px side panel for menus and HUD on the right.
 
 ```
 src/
   main.ts          Phaser game config and scene list
   game/            Engine-agnostic logic (movement, classes, config); unit-tested
   scenes/          Menu scenes: role, melee/ranged, class, boss select
-  ui/              Shared UI helpers (buttons drawn in code)
+  assets/          Asset keys and paths, and the loader for shared menu art
+  ui/              Shared UI helpers (buttons, loading bar, camera setup)
   bosses/
     registry.ts    Ordered list of all bosses (unbuilt ones show as "soon")
     types.ts       Boss definition and scene data types
     <boss>/        One self-contained folder per boss fight
-public/assets/     PNG/JPG art
+public/assets/     PNG/JPG art; see public/assets/README.md for layout and naming
 ```
 
 Encounter logic (timings, rules, win/fail) is kept as plain TypeScript separate from rendering, so it can be unit-tested without launching the game.

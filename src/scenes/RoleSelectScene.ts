@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { roleIconKey } from '../assets/manifest';
 import { GAME_WIDTH } from '../game/config';
 import { createButton, createTitle } from '../ui/button';
 import { addText, navigate, setupLogicalCamera } from '../ui/render';
@@ -16,9 +17,16 @@ export class RoleSelectScene extends Phaser.Scene {
       color: '#8aa08a',
     }).setOrigin(0.5);
 
-    createButton(this, GAME_WIDTH / 2, 240, 'Healer', () =>
-      navigate(this, 'ClassSelectScene', { role: 'healer' }),
+    createButton(
+      this,
+      GAME_WIDTH / 2,
+      240,
+      'Healer',
+      () => navigate(this, 'ClassSelectScene', { role: 'healer' }),
+      { icon: roleIconKey('healer') },
     );
-    createButton(this, GAME_WIDTH / 2, 300, 'DPS', () => navigate(this, 'RangeSelectScene'));
+    createButton(this, GAME_WIDTH / 2, 300, 'DPS', () => navigate(this, 'RangeSelectScene'), {
+      icon: roleIconKey('melee-dps'),
+    });
   }
 }

@@ -7,24 +7,40 @@ export interface ButtonOptions {
   height?: number;
   enabled?: boolean;
   fill?: number;
+  /** Texture key of an icon shown at the left of the button. */
+  icon?: string;
 }
 
-/** A simple rectangle button drawn in code, so menus need no art. */
+const ICON_SIZE = 32;
+
+/** A simple rectangle button drawn in code, with an optional icon. */
 export function createButton(
   scene: Phaser.Scene,
   x: number,
   y: number,
   label: string,
   onClick: () => void,
-  { width = 260, height = 44, enabled = true, fill = COLORS.button }: ButtonOptions = {},
+  { width = 260, height = 44, enabled = true, fill = COLORS.button, icon }: ButtonOptions = {},
 ): Phaser.GameObjects.Container {
   const bg = scene.add.rectangle(0, 0, width, height, enabled ? fill : 0x1a1f24);
   bg.setStrokeStyle(2, enabled ? COLORS.arenaBorder : 0x2a3138);
-  const text = addText(scene, 0, 0, label, {
+  const parts: Phaser.GameObjects.GameObject[] = [bg];
+
+  const iconSpace = icon ? ICON_SIZE + 12 : 0;
+  const text = addText(scene, iconSpace / 2, 0, label, {
     fontSize: '20px',
     color: enabled ? COLORS.text : COLORS.muted,
   }).setOrigin(0.5);
-  const container = scene.add.container(x, y, [bg, text]);
+
+  if (icon) {
+    const image = scene.add
+      .image(-width / 2 + 10 + ICON_SIZE / 2, 0, icon)
+      .setDisplaySize(ICON_SIZE, ICON_SIZE);
+    if (!enabled) image.setAlpha(0.4);
+    parts.push(image);
+  }
+  parts.push(text);
+  const container = scene.add.container(x, y, parts);
 
   if (enabled) {
     bg.setInteractive({ useHandCursor: true });

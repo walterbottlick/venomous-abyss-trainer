@@ -1,5 +1,6 @@
 import type { ClassId, ClassInfo, DpsRange, Role } from './player';
 
+/** `color` is the standard in-game WoW class colour. */
 export const CLASSES: Record<ClassId, ClassInfo> = {
   'death-knight': { id: 'death-knight', name: 'Death Knight', color: 0xc41e3a },
   'demon-hunter': { id: 'demon-hunter', name: 'Demon Hunter', color: 0xa330c9 },
