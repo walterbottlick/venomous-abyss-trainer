@@ -13,7 +13,7 @@ import { loadVashnikAssets, VASHNIK_ASSETS } from './assets';
 const PLAYER_SIZE = 32;
 const PLAYER_RADIUS = PLAYER_SIZE / 2;
 const PLAYER_SPEED = 220; // px per second
-const BOSS_SIZE = 96;
+const BOSS_SIZE = PLAYER_SIZE * 1.5;
 const PANEL_PADDING = 20;
 
 type Key = Phaser.Input.Keyboard.Key;
