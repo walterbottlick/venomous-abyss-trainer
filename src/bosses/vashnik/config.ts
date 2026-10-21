@@ -262,7 +262,7 @@ export const BURNING_KILLS_FOR_BILE = 2;
 export const BILE_AFTER_TOTEM_RESET_SECONDS = 5;
 export const FROTH_AFTER_BILE_SECONDS = 5;
 /** If the boss is still alive this many seconds into the fight, it enrages. */
-export const ENRAGE_SECONDS = 5 * 60;
+export const ENRAGE_SECONDS = 6 * 60;
 
 export const FROTH_AIM_PROMPT = 'Aim plague waves away from teammates and dodge them yourself!';
 export const FROTH_MARKER_PROMPT = 'Stand on one of the empty markers!';
