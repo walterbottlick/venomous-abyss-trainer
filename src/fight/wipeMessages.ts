@@ -26,6 +26,19 @@ export const WIPE_MESSAGES: Record<WipeReason, string[]> = {
   ],
 };
 
+/**
+ * The plain "Reason:" line under the message, by wipe reason. Used when nothing more specific
+ * was given when the raider died (see `Fight.kill`).
+ */
+export const WIPE_DETAILS: Record<WipeReason, string> = {
+  'player-died': 'You died.',
+  'tank-died': 'A tank died.',
+  'both-tanks-died': 'Both tanks died.',
+  'healers-died': 'All healers died.',
+  'dps-died': 'All DPS died.',
+  enrage: 'The boss enraged and was not killed in time.',
+};
+
 /** Picks a message for `reason`. `random` returns a number in [0, 1). */
 export function pickWipeMessage(reason: WipeReason, random: () => number = Math.random): string {
   const messages = WIPE_MESSAGES[reason];

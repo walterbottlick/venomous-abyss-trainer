@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import {
+  BANISH_OVERLAY_ALPHA,
+  BANISH_OVERLAY_COLOR,
   CLICK_PADDING,
   DEATH_DARKEN_ALPHA,
   DEATH_DARKEN_COLOR,
@@ -10,6 +12,9 @@ import {
   ENRAGE_OVERLAY_COLOR,
   ENRAGE_OVERLAY_MAX_ALPHA,
   ENRAGE_PULSE_SECONDS,
+  FOCUS_RING_COLOR,
+  FOCUS_RING_GAP,
+  FOCUS_RING_WIDTH,
   HEAL_FLASH_COLOR,
   HEAL_FLASH_SECONDS,
   HEAL_FLASH_START_ALPHA,
@@ -54,6 +59,8 @@ export class TokenView {
   private readonly healFlash: Phaser.GameObjects.Arc;
   private readonly debuff: Phaser.GameObjects.Arc;
   private readonly enrage: Phaser.GameObjects.Arc;
+  private readonly banish: Phaser.GameObjects.Arc;
+  private readonly focusRing: Phaser.GameObjects.Arc;
   private readonly dark: Phaser.GameObjects.Arc;
   private readonly cross: Phaser.GameObjects.Image;
   private readonly hit: Phaser.GameObjects.Arc;
@@ -66,6 +73,7 @@ export class TokenView {
   private healLeft = 0;
   private debuffed = false;
   private enraged = false;
+  private banished = false;
   private enragePhase = 0;
   private dead = false;
   private deadFor = 0;
@@ -88,7 +96,14 @@ export class TokenView {
     this.healFlash = overlay(HEAL_FLASH_COLOR);
     this.debuff = overlay(DISPEL_OVERLAY_COLOR);
     this.enrage = overlay(ENRAGE_OVERLAY_COLOR);
+    this.banish = overlay(BANISH_OVERLAY_COLOR);
     this.dark = overlay(DEATH_DARKEN_COLOR);
+    // A thin white ring just outside the icon, shown while it is the raid's focus target.
+    this.focusRing = scene.add
+      .circle(0, 0, radius + FOCUS_RING_GAP)
+      .setStrokeStyle(FOCUS_RING_WIDTH, FOCUS_RING_COLOR)
+      .setFillStyle()
+      .setVisible(false);
     // The cross is as big as the icon underneath it, and no bigger.
     this.cross = scene.add.image(0, 0, options.crossKey).setDisplaySize(art.size, art.size);
     this.cross.setAlpha(0);
@@ -101,9 +116,11 @@ export class TokenView {
       this.healFlash,
       this.debuff,
       this.enrage,
+      this.banish,
       this.dark,
       this.cross,
       this.ring,
+      this.focusRing,
       this.hit,
     );
     this.container = scene.add.container(x, y, children);
@@ -140,6 +157,16 @@ export class TokenView {
   setEnraged(on: boolean): void {
     if (on && !this.enraged) this.enragePhase = 0;
     this.enraged = on;
+  }
+
+  /** Covers the icon in the banish overlay (a purple tint). */
+  setBanished(on: boolean): void {
+    this.banished = on;
+  }
+
+  /** Shows or hides the white ring that marks the raid's current focus target. */
+  setFocused(on: boolean): void {
+    this.focusRing.setVisible(on && !this.dead);
   }
 
   /** Shows the green flash, which fades out over HEAL_FLASH_SECONDS. */
@@ -186,6 +213,7 @@ export class TokenView {
     }
 
     this.debuff.setAlpha(this.debuffed ? DISPEL_OVERLAY_ALPHA : 0);
+    this.banish.setAlpha(this.banished ? BANISH_OVERLAY_ALPHA : 0);
 
     if (this.enraged) {
       this.enragePhase = (this.enragePhase + dtSeconds / ENRAGE_PULSE_SECONDS) % 1;
@@ -200,7 +228,10 @@ export class TokenView {
   }
 
   private updateDead(dtSeconds: number): void {
-    for (const o of [this.lowHealth, this.healFlash, this.debuff, this.enrage]) o.setAlpha(0);
+    for (const o of [this.lowHealth, this.healFlash, this.debuff, this.enrage, this.banish]) {
+      o.setAlpha(0);
+    }
+    this.focusRing.setVisible(false);
     this.dark.setAlpha(DEATH_DARKEN_ALPHA);
     this.cross.setAlpha(1);
 

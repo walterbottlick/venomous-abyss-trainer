@@ -45,7 +45,7 @@ export const LOW_HEALTH_PULSE_SECONDS = 1;
 // --- Healing and dispelling -------------------------------------------------------------------
 
 /** Health restored by one heal (a click for the player; one cast for an NPC healer). */
-export const HEAL_AMOUNT = 15;
+export const HEAL_AMOUNT = 20;
 /**
  * How long a healer, player or NPC, must wait after any ability (a heal or a dispel) before using
  * another. The two share one timer, so healing blocks dispelling for this long, and vice versa.
@@ -99,6 +99,9 @@ export const WIPE_TITLE_COLOR_CSS = '#e02020';
 export const WIPE_TITLE_FONT_SIZE = 52;
 export const WIPE_MESSAGE_COLOR_CSS = '#e8f0e8';
 export const WIPE_MESSAGE_FONT_SIZE = 18;
+/** The plain "Reason:" line under the message: a little smaller and dimmer. */
+export const WIPE_DETAIL_FONT_SIZE = 15;
+export const WIPE_DETAIL_COLOR_CSS = '#b8c4b8';
 
 /** The buttons along the bottom of the wipe screen. */
 export const WIPE_RETRY_LABEL = 'Try again';
@@ -119,8 +122,8 @@ export const VICTORY_BACK_LABEL = 'Back to bosses';
 
 // --- Fight log (the panel on the right) ---------------------------------------------------------
 
-/** How many of the latest messages the log shows. */
-export const LOG_MAX_MESSAGES = 12;
+/** How many messages the log keeps. Older ones drop off; scroll the log to read back. */
+export const LOG_MAX_MESSAGES = 200;
 export const LOG_FONT_SIZE = 13;
 
 // --- Clicking ---------------------------------------------------------------------------------
@@ -173,3 +176,39 @@ export const ARROW_WIDTH = 2;
 /** Ranged beam: a line from the attacker to the boss that fades in, then out. */
 export const BEAM_SECONDS = 0.5;
 export const BEAM_WIDTH = 2;
+
+// --- Focus target and banish ----------------------------------------------------------------
+
+/** A thin ring that marks what the raid is attacking, when it is not the boss's default target. */
+export const FOCUS_RING_COLOR = 0xffffff;
+export const FOCUS_RING_WIDTH = 1.5;
+/** Gap between the icon's edge and the focus ring, in pixels. */
+export const FOCUS_RING_GAP = 3;
+
+/** The purple tint on something that has been banished (it stops moving). */
+export const BANISH_OVERLAY_COLOR = 0x9b4dff;
+export const BANISH_OVERLAY_ALPHA = 0.55;
+
+// --- Countdown and starting positions --------------------------------------------------------
+
+/** The number the pre-fight countdown starts from, and how long each number shows. */
+export const COUNTDOWN_FROM = 3;
+export const COUNTDOWN_SECONDS_PER_NUMBER = 1;
+export const COUNTDOWN_FONT_SIZE = 140;
+export const COUNTDOWN_COLOR_CSS = '#ffffff';
+
+/** Centre-to-centre spacing of icons in the starting huddle, in pixels. */
+export const HUDDLE_SPACING = 30;
+
+/** How a boss that has somewhere to be moves: running at the tanks, then being taken into place. */
+export const BOSS_RUN_SPEED = 90;
+export const BOSS_RELOCATE_SPEED = 60;
+/** A tank this close to the boss (edge to edge, in pixels) counts as in contact with it. */
+export const TANK_CONTACT_DISTANCE = 8;
+
+// --- Prompts ------------------------------------------------------------------------------------
+
+/** The instruction text shown at the top of the arena (e.g. "Right click to death grip..."). */
+export const PROMPT_FONT_SIZE = 28;
+export const PROMPT_COLOR_CSS = '#ffffff';
+export const PROMPT_TOP = 40;

@@ -37,3 +37,6 @@ export const PLAYER_SIZE = 32;
  * 69m x 54m, the player icon is 3.2m wide, and a 30m range reaches 300 pixels.
  */
 export const PIXELS_PER_METER = 10;
+
+/** How fast the player moves in every fight, in pixels per second. */
+export const PLAYER_SPEED = 130;
