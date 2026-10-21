@@ -101,4 +101,4 @@ export const FOLLOW_FACTOR: Record<RaidRole, number> = {
 };
 
 /** Top speed, in pixels per second, an NPC walks at to keep up with the boss. */
-export const NPC_MOVE_SPEED = 140;
+export const NPC_MOVE_SPEED = 70;

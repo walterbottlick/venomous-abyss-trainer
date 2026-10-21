@@ -100,7 +100,11 @@ describe('DPS auto-attacks', () => {
     const fight = fightFor(melee);
     fight.setInRange(PLAYER_ID, true);
     fight.update(0.1);
-    expect(fight.drainEvents()).toContainEqual({ type: 'attacked', id: PLAYER_ID });
+    expect(fight.drainEvents()).toContainEqual({
+      type: 'attacked',
+      id: PLAYER_ID,
+      targetId: BOSS_ID,
+    });
   });
 
   it('win the fight when the boss reaches 0 health', () => {

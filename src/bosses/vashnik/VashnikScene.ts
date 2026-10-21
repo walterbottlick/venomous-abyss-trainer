@@ -8,6 +8,7 @@ import {
   PANEL_WIDTH,
   PANEL_X,
   PLAYER_SIZE,
+  PLAYER_SPEED,
 } from '../../game/config';
 import { directionFromInput, step, type Vec2 } from '../../game/movement';
 import { abilityLines } from '../../fight/abilities';
@@ -18,13 +19,13 @@ import { showLoadingBar } from '../../ui/loading';
 import { addText, navigate, setupLogicalCamera } from '../../ui/render';
 import type { BossSceneData } from '../types';
 import { loadVashnikAssets, VASHNIK_ASSETS } from './assets';
+import { BOSS_DESTINATION, BOSS_START, RAID_START, VASHNIK_MAX_HEALTH } from './config';
+import { VashnikEncounter } from './VashnikEncounter';
+import { VashnikView } from './VashnikView';
 
 const PLAYER_RADIUS = PLAYER_SIZE / 2;
-const PLAYER_SPEED = 220; // px per second
 const BOSS_SIZE = PLAYER_SIZE * 1.5;
 const NPC_SIZE = PLAYER_SIZE * NPC_SIZE_RATIO;
-// Stand-in until the encounter decides where the boss goes (and later moves it).
-const BOSS_START: Vec2 = { x: ARENA_WIDTH / 2, y: 110 };
 const PANEL_PADDING = 20;
 /** The fight log fills the side panel from below the instructions to just above the back button. */
 const LOG_BOTTOM = ARENA_HEIGHT - 70;
@@ -33,14 +34,13 @@ const LOG_GAP = 12;
 type Key = Phaser.Input.Keyboard.Key;
 type MoveKeys = Record<'w' | 'a' | 's' | 'd' | 'up' | 'down' | 'left' | 'right', Key>;
 
-const startPosition = (): Vec2 => ({ x: ARENA_WIDTH / 2, y: ARENA_HEIGHT * 0.75 });
-
 export class VashnikScene extends Phaser.Scene {
   private sceneData!: BossSceneData;
-  private pos: Vec2 = startPosition();
+  /** The player's position. Starts in the raid's huddle (set once the runtime has placed it). */
+  private pos: Vec2 = { x: 0, y: 0 };
   private keys!: MoveKeys;
-  private bossPos: Vec2 = { ...BOSS_START };
   private runtime!: FightRuntime;
+  private view!: VashnikView;
 
   constructor() {
     super('VashnikScene');
@@ -48,7 +48,6 @@ export class VashnikScene extends Phaser.Scene {
 
   init(data: BossSceneData): void {
     this.sceneData = data;
-    this.pos = startPosition();
   }
 
   preload(): void {
@@ -60,13 +59,14 @@ export class VashnikScene extends Phaser.Scene {
     setupLogicalCamera(this);
 
     // The background art is 1114x870, the same shape as the arena, so it fits without cropping.
+    // Depth -10 keeps it behind everything, including the purple circles (depth -5).
     this.add
       .image(0, 0, VASHNIK_ASSETS.background)
       .setOrigin(0)
-      .setDisplaySize(ARENA_WIDTH, ARENA_HEIGHT);
+      .setDisplaySize(ARENA_WIDTH, ARENA_HEIGHT)
+      .setDepth(-10);
     this.add.rectangle(PANEL_X, 0, PANEL_WIDTH, ARENA_HEIGHT, COLORS.panel).setOrigin(0);
 
-    this.bossPos = { ...BOSS_START };
     const { choice } = this.sceneData;
     const info = CLASSES[choice.classId];
 
@@ -77,8 +77,15 @@ export class VashnikScene extends Phaser.Scene {
     this.runtime = new FightRuntime(this, {
       choice,
       arena: { width: ARENA_WIDTH, height: ARENA_HEIGHT },
-      boss: { pos: this.bossPos, size: BOSS_SIZE, textureKey: VASHNIK_ASSETS.boss },
-      playerStart: this.pos,
+      // Vashnik starts below the pool, runs at the tanks, and is then taken toward the corner.
+      boss: {
+        start: BOSS_START,
+        destination: BOSS_DESTINATION,
+        size: BOSS_SIZE,
+        textureKey: VASHNIK_ASSETS.boss,
+        maxHealth: VASHNIK_MAX_HEALTH,
+      },
+      raidStart: RAID_START,
       playerSize: PLAYER_SIZE,
       npcSize: NPC_SIZE,
       logArea: {
@@ -89,6 +96,31 @@ export class VashnikScene extends Phaser.Scene {
       },
       onRetry: () => navigate(this, 'VashnikScene', this.sceneData),
       onExit: () => navigate(this, 'BossSelectScene', this.sceneData),
+    });
+    this.pos = { ...this.runtime.playerStart };
+
+    // Vashnik's own mechanics: the acid pool, Imbibe, and the minions.
+    const encounter = new VashnikEncounter({
+      fight: this.runtime.fight,
+      playerClassId: choice.classId,
+    });
+    this.runtime.setEncounter(encounter);
+    this.view = new VashnikView(this, this.runtime, encounter);
+
+    // TESTING ONLY (remove later): Shift + Alt + I makes Vashnik imbibe right away, and
+    // Shift + Alt + B starts Catalytic Bile right away, and Shift + Alt + P starts Plague Froth.
+    this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
+      if (!event.shiftKey || !event.altKey) return;
+      if (event.code === 'KeyI') {
+        event.preventDefault();
+        encounter.triggerImbibe();
+      } else if (event.code === 'KeyB') {
+        event.preventDefault();
+        encounter.triggerCatalyticBile();
+      } else if (event.code === 'KeyP') {
+        event.preventDefault();
+        encounter.triggerPlagueFroth();
+      }
     });
 
     const keyboard = this.input.keyboard!;
@@ -126,7 +158,8 @@ export class VashnikScene extends Phaser.Scene {
       this.runtime.setPlayerPosition(this.pos.x, this.pos.y);
     }
 
-    this.runtime.update(dt, this.bossPos);
+    this.runtime.update(dt);
+    this.view.update(dt);
   }
 
   /** Builds the side panel. Returns the y just below its text, where the fight log can start. */

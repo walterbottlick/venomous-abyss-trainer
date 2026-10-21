@@ -163,7 +163,7 @@ describe('NPC healers and dispels', () => {
     fight.applyMagicDebuff(cursed!);
 
     fight.update(0.1); // the NPC healer's first action
-    expect(fight.get(low!).health).toBe(35);
+    expect(fight.get(low!).health).toBe(20 + HEAL_AMOUNT);
     expect(fight.get(cursed!).debuffed).toBe(true);
 
     fight.update(HEALER_COOLDOWN_SECONDS); // its next action
@@ -181,7 +181,7 @@ describe('NPC healers and dispels', () => {
     expect(fight.get(hurt!).health).toBe(60);
 
     fight.update(HEALER_COOLDOWN_SECONDS);
-    expect(fight.get(hurt!).health).toBe(75);
+    expect(fight.get(hurt!).health).toBe(60 + HEAL_AMOUNT);
   });
 
   it('dispel the player too', () => {
@@ -199,7 +199,7 @@ describe('NPC healers and dispels', () => {
 
     fight.update(0.1);
     expect(fight.get(cursed!).debuffed).toBe(false);
-    expect(fight.get(hurt!).health).toBe(75);
+    expect(fight.get(hurt!).health).toBe(60 + HEAL_AMOUNT);
   });
 
   it('only cast once a second each, dispels included', () => {
@@ -374,5 +374,45 @@ describe('enrage', () => {
     const fight = fightFor(healerChoice);
     fight.setHealth(BOSS_ID, 100);
     expect(fight.boss.health).toBe(100);
+  });
+});
+
+describe('the reason given for a wipe', () => {
+  it('says what killed the player, when it was told', () => {
+    const fight = fightFor(meleeChoice);
+    fight.kill(PLAYER_ID, 'Fell into the acid pool.');
+    fight.update(0);
+    expect(fight.wipe?.detail).toBe('Fell into the acid pool.');
+    const wiped = fight.drainEvents().find((e) => e.type === 'wiped');
+    expect(wiped && 'detail' in wiped ? wiped.detail : null).toBe('Fell into the acid pool.');
+  });
+
+  it('keeps the first cause, and takes health damage causes too', () => {
+    const fight = fightFor(meleeChoice);
+    fight.damage(PLAYER_ID, 1000, 'Burning Venom explosions.');
+    fight.kill(PLAYER_ID, 'Something else.');
+    fight.update(0);
+    expect(fight.wipe?.detail).toBe('Burning Venom explosions.');
+  });
+
+  it('falls back to a plain sentence by reason when no cause was given', () => {
+    const fight = fightFor(meleeChoice);
+    fight.kill(idsOf(fight, 'tank')[0]!);
+    fight.update(0);
+    expect(fight.wipe?.detail).toBe('A tank died.');
+  });
+
+  it('uses what killed a tank, not the player, for a tank wipe', () => {
+    const fight = fightFor(meleeChoice);
+    fight.kill(idsOf(fight, 'tank')[0]!, 'Burning Venom explosions.');
+    fight.update(0);
+    expect(fight.wipe?.detail).toBe('Burning Venom explosions.');
+  });
+
+  it('explains an enrage wipe', () => {
+    const fight = fightFor(meleeChoice);
+    fight.enrageBoss();
+    fight.update(ENRAGE_WIPE_DELAY_SECONDS + 1);
+    expect(fight.wipe?.detail).toBe('The boss enraged and was not killed in time.');
   });
 });

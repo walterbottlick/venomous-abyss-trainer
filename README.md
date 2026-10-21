@@ -37,11 +37,11 @@ src/
   assets/          Asset keys and paths, and the loader for shared menu art
   ui/              Shared UI helpers (buttons, loading bar, camera setup)
   raid/            NPC raid members: composition, layout, idle wander; all tunables in raid/config.ts
-  fight/           Fight rules (health, healing, death, wipes, enrage), FightRuntime, tunables in fight/config.ts, wipe messages in fight/wipeMessages.ts
+  fight/           Fight rules (health, healing, death, wipes, enrage, focus), FightRuntime (countdown, huddle, boss movement), tunables in fight/config.ts, wipe messages in fight/wipeMessages.ts
   bosses/
     registry.ts    Ordered list of all bosses (unbuilt ones show as "soon")
     types.ts       Boss definition and scene data types
-    <boss>/        One self-contained folder per boss fight
+    <boss>/        One self-contained folder per boss fight (e.g. vashnik/: config.ts has its positions and numbers)
 public/assets/     PNG/JPG art; see public/assets/README.md for layout and naming
 ```
 

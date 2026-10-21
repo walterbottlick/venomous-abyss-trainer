@@ -7,6 +7,8 @@ import {
   VICTORY_TITLE_COLOR_CSS,
   VICTORY_TITLE_TEXT,
   WIPE_BACK_LABEL,
+  WIPE_DETAIL_COLOR_CSS,
+  WIPE_DETAIL_FONT_SIZE,
   WIPE_MESSAGE_COLOR_CSS,
   WIPE_MESSAGE_FONT_SIZE,
   WIPE_OVERLAY_ALPHA,
@@ -34,6 +36,8 @@ interface EndScreenOptions extends EndScreenActions {
   title: string;
   titleColor: string;
   message: string;
+  /** A smaller line under the message (the wipe screen's "Reason:"). */
+  detail?: string;
   retryLabel: string;
   exitLabel: string;
 }
@@ -79,6 +83,15 @@ function showEndScreen(
     wordWrap: { width: arena.width - 100 },
   }).setOrigin(0.5, 0);
 
+  const detail = options.detail
+    ? addText(scene, centerX, message.y + message.height + 14, options.detail, {
+        fontSize: `${WIPE_DETAIL_FONT_SIZE}px`,
+        color: WIPE_DETAIL_COLOR_CSS,
+        align: 'center',
+        wordWrap: { width: arena.width - 100 },
+      }).setOrigin(0.5, 0)
+    : null;
+
   // Two buttons side by side, centred, each as wide as its label needs.
   const labels = [options.retryLabel, options.exitLabel];
   const widths = labels.map((l) => l.length * CHAR_WIDTH + BUTTON_PADDING);
@@ -93,7 +106,9 @@ function showEndScreen(
     return createButton(scene, x, y, label, actions[i]!, { width: widths[i]! });
   });
 
-  return scene.add.container(0, 0, [overlay, icon, title, message, ...buttons]).setDepth(1000);
+  return scene.add
+    .container(0, 0, [overlay, icon, title, message, ...(detail ? [detail] : []), ...buttons])
+    .setDepth(1000);
 }
 
 /** The "You Wiped" screen: skull, red title, the reason, and Try again / Back to bosses. */
@@ -101,6 +116,7 @@ export function showWipeScreen(
   scene: Phaser.Scene,
   arena: { width: number; height: number },
   message: string,
+  detail: string,
   actions: EndScreenActions,
 ): Phaser.GameObjects.Container {
   return showEndScreen(scene, arena, {
@@ -109,6 +125,7 @@ export function showWipeScreen(
     title: WIPE_TITLE_TEXT,
     titleColor: WIPE_TITLE_COLOR_CSS,
     message,
+    detail: `Reason: ${detail}`,
     retryLabel: WIPE_RETRY_LABEL,
     exitLabel: WIPE_BACK_LABEL,
   });

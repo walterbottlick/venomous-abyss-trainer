@@ -11,7 +11,7 @@ import {
   NPC_HEAL_PRIORITY,
 } from './config';
 import { NPC_RANGE_METERS } from './ranges';
-import { pickWipeMessage, WIPE_PRIORITY, type WipeReason } from './wipeMessages';
+import { pickWipeMessage, WIPE_DETAILS, WIPE_PRIORITY, type WipeReason } from './wipeMessages';
 
 /**
  * The rules of a fight, with no graphics: who is alive, health, healing, dispelling, death, enrage
@@ -44,12 +44,12 @@ export interface Combatant {
 /** One-off things that happened, for the scene to react to (flash an icon, add a log line...). */
 export type FightEvent =
   | { type: 'healed'; id: string }
-  | { type: 'attacked'; id: string }
+  | { type: 'attacked'; id: string; targetId: string }
   | { type: 'died'; id: string }
   | { type: 'log'; text: string }
   | { type: 'enraged' }
   | { type: 'won' }
-  | { type: 'wiped'; reason: WipeReason; message: string };
+  | { type: 'wiped'; reason: WipeReason; message: string; detail: string };
 
 export type FightStatus = 'active' | 'won' | 'wiped';
 
@@ -77,14 +77,23 @@ export class Fight {
   readonly combatants: Combatant[] = [];
   status: FightStatus = 'active';
   /** Set once the fight is wiped. */
-  wipe: { reason: WipeReason; message: string } | null = null;
+  wipe: { reason: WipeReason; message: string; detail: string } | null = null;
   enraged = false;
   /** Seconds until an enraged boss wipes the raid, if it is not killed first. */
   enrageRemaining = 0;
+  /**
+   * What the raid's DPS are attacking: the boss, or the id of something else a fight lets them
+   * focus (like Vashnik's minions). Hits only hurt the boss while this is the boss; the fight's
+   * own rules decide what attacking anything else does.
+   */
+  focusId: string = BOSS_ID;
 
   private readonly byId = new Map<string, Combatant>();
   private readonly nextActionAt = new Map<string, number>();
   private events: FightEvent[] = [];
+  /** What killed the player, and what killed anyone else, as told to `kill` / `damage`. First one wins. */
+  private playerCause: string | null = null;
+  private raidCause: string | null = null;
   private time = 0;
   private readonly random: () => number;
 
@@ -155,6 +164,21 @@ export class Fight {
     return this.get(BOSS_ID);
   }
 
+  /** How many DPS (melee or ranged, the player included) are still alive. */
+  get aliveDpsCount(): number {
+    return this.combatants.filter((c) => c.kind !== 'boss' && isDps(c) && c.alive).length;
+  }
+
+  /** Points the raid's DPS at the boss or at another target. */
+  setFocus(id: string): void {
+    this.focusId = id;
+  }
+
+  /** Writes a line in the fight log. */
+  addLog(text: string): void {
+    this.log(text);
+  }
+
   /** The player and every NPC (everyone but the boss). */
   get raiders(): Combatant[] {
     return this.combatants.filter((c) => c.kind !== 'boss');
@@ -174,15 +198,16 @@ export class Fight {
   // --- Changing health -------------------------------------------------------------------------
 
   /** Sets health directly (clamped to 0..max). Reaching 0 kills the combatant. */
-  setHealth(id: string, health: number): void {
+  setHealth(id: string, health: number, cause?: string): void {
     const c = this.get(id);
     if (this.status !== 'active' || !c.alive) return;
     c.health = Math.min(c.maxHealth, Math.max(0, health));
-    if (c.health === 0) this.die(c);
+    if (c.health === 0) this.die(c, cause);
   }
 
-  damage(id: string, amount: number): void {
-    this.setHealth(id, this.get(id).health - amount);
+  /** Takes health away. `cause` is what to say killed them if it does, on the wipe screen. */
+  damage(id: string, amount: number, cause?: string): void {
+    this.setHealth(id, this.get(id).health - amount, cause);
   }
 
   /** Adds health, never above the maximum. Returns how much was actually restored. */
@@ -195,13 +220,18 @@ export class Fight {
     return gained;
   }
 
-  kill(id: string): void {
+  /** Kills a raider outright. `cause` is what to say killed them, on the wipe screen. */
+  kill(id: string, cause?: string): void {
     const c = this.get(id);
     if (this.status !== 'active' || !c.alive) return;
-    this.die(c);
+    this.die(c, cause);
   }
 
-  private die(c: Combatant): void {
+  private die(c: Combatant, cause?: string): void {
+    if (cause) {
+      if (c.kind === 'player') this.playerCause ??= cause;
+      else this.raidCause ??= cause;
+    }
     c.alive = false;
     c.health = 0;
     c.debuffed = false;
@@ -311,17 +341,19 @@ export class Fight {
   }
 
   /**
-   * Every living DPS in range of the boss hits it for DPS_DAMAGE_PER_ATTACK, then waits
-   * DPS_COOLDOWN_SECONDS. Tanks and healers never attack. A DPS out of range simply waits, and
-   * attacks the moment it is back in range.
+   * Every living DPS in range of its target attacks it, then waits DPS_COOLDOWN_SECONDS. Tanks
+   * and healers never attack. A DPS out of range simply waits, and attacks the moment it is back
+   * in range. Attacks on the boss deal DPS_DAMAGE_PER_ATTACK; attacks on anything else (see
+   * `focusId`) only announce themselves, so the scene can animate them and the fight's own rules
+   * can decide what they do.
    */
   private runDpsAttacks(): void {
     for (const c of this.raiders) {
       if (!this.boss.alive) return;
       if (!isDps(c) || !c.alive || !c.inRange || !this.isReady(c.id)) continue;
-      this.damage(BOSS_ID, DPS_DAMAGE_PER_ATTACK);
+      if (this.focusId === BOSS_ID) this.damage(BOSS_ID, DPS_DAMAGE_PER_ATTACK);
       this.startCooldown(c.id, DPS_COOLDOWN_SECONDS);
-      this.events.push({ type: 'attacked', id: c.id });
+      this.events.push({ type: 'attacked', id: c.id, targetId: this.focusId });
     }
   }
 
@@ -410,9 +442,11 @@ export class Fight {
 
   private startWipe(reason: WipeReason): void {
     const message = pickWipeMessage(reason, this.random);
+    const cause = reason === 'player-died' ? this.playerCause : this.raidCause;
+    const detail = cause ?? WIPE_DETAILS[reason];
     this.status = 'wiped';
-    this.wipe = { reason, message };
-    this.events.push({ type: 'wiped', reason, message });
+    this.wipe = { reason, message, detail };
+    this.events.push({ type: 'wiped', reason, message, detail });
   }
 
   private log(text: string): void {
